@@ -1,10 +1,11 @@
-var express = require('express');
-var router = express.Router();
-var path = require('path');
-var fs = require('fs');
-var JSZip = require('jszip');
+const express = require('express');
+const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const JSZip = require('jszip');
+const compressing = require('compressing');
 const ZhenzismsClient = require('../utils/zhenzisms');
-var client = new ZhenzismsClient(
+const client = new ZhenzismsClient(
   'sms_developer.zhenzikj.com',
   '106532',
   'OWU0YWE3NDgtNWEyYi00MTkwLTg2YjQtZWExMDU3NmI2Njg5'
@@ -26,7 +27,7 @@ router.get('/', function (req, res, next) {
 });
 // 生成并发送短信验证码
 router.post('/postCode', function (req, res, next) {
-  var params = {};
+  let params = {};
   params.templateId = '1406';
   if (!req.body.tel) {
     responseData = {
@@ -40,7 +41,7 @@ router.post('/postCode', function (req, res, next) {
   }
   params.number = req.body.tel;
   params.templateParams = ['2222', '5分钟'];
-  var clientRes = client.send(params);
+  const clientRes = client.send(params);
   clientRes.then(resp => {
     if (resp.code == 0) {
       responseData.ok = true;
@@ -86,9 +87,9 @@ router.post('/relativePath', function (req, res, next) {
 // 这个接口仅限于单个单个的文件，如果不做任何处理的话，接口接收到的如果是文件夹，则会把文件夹一层一层拆解，最后生成的文件都在根目录下
 router.post('/package', function (req, res, next) {
   // 拿到这个req.cookies.timestamp可以找到相应的文件夹目录格式文件
-  var zip = new JSZip();
+  const zip = new JSZip();
   // zip创建一个download的文件夹
-  var zipFile = zip.folder('download');
+  const zipFile = zip.folder('download');
 
   // 拿到目录格式文件并解析
   const catalog = JSON.parse(
@@ -160,6 +161,93 @@ router.post('/package', function (req, res, next) {
     });
 
   return;
+});
+
+router.post('/newpackage', function (req, res, next) {
+  const fileType = {
+    tar: 'tar',
+    gzip: 'gz',
+    tgz: 'tgz',
+    zip: 'zip'
+  };
+  if (!Object.keys(fileType).find(i => i == req.body.type)) {
+    responseData.ok = false;
+    responseData.result = {
+      msg: '参数type必须为tar/gzip/tgz/zip其中一个'
+    };
+    res.json(responseData);
+    return;
+  }
+  // 拿到目录格式文件并解析
+  const catalog = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        __dirname,
+        `../public/relativePath/${req.cookies.timestamp}.txt`
+      )
+    )
+  );
+  const target = path.join(
+    __dirname,
+    `../public/copyfolder/download${req.cookies.timestamp}`
+  );
+  fs.mkdirSync(target);
+  req.files.forEach(item => {
+    const catalogArray = catalog[item.fieldname].split('/');
+    if (catalogArray.length < 2) {
+      if (!fs.existsSync(path.join(target, catalogArray[0]))) {
+        fs.writeFileSync(
+          path.join(path.join(target, catalogArray[0]), item.originalname),
+          fs.readFileSync(
+            path.join(__dirname, '../', item.destination, item.filename)
+          )
+        );
+      }
+    } else {
+      catalogArray.reduce((total, current, index) => {
+        if (index < catalogArray.length - 1) {
+          if (!fs.existsSync(path.join(total, current))) {
+            fs.mkdirSync(path.join(total, current));
+          }
+        } else {
+          fs.writeFileSync(
+            path.join(total, current),
+            fs.readFileSync(
+              path.join(__dirname, '../', item.destination, item.filename)
+            )
+          );
+        }
+
+        return path.join(total, current);
+      }, target);
+    }
+  });
+
+  // 文件复制完成之后开始打包
+  compressing[req.body.type]
+    .compressDir(
+      target,
+      path.join(
+        __dirname,
+        `../public/zip/download${req.cookies.timestamp}.${
+          fileType[req.body.type]
+        }`
+      )
+    )
+    .then(() => {
+      responseData.ok = true;
+      responseData.result = {
+        filename: `download${timestamp}.${fileType[req.body.type]}`
+      };
+      res.json(responseData);
+    })
+    .catch(err => {
+      responseData.ok = false;
+      responseData.result = {
+        msg: err
+      };
+      res.json(responseData);
+    });
 });
 // 下载接口
 router.get('/download', function (req, res, next) {
