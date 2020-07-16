@@ -39,6 +39,7 @@ input = {
   }
 };
 output = {
+  ok: true
   result: {
     timestamp: 1594720945125
   },
