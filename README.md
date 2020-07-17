@@ -8,9 +8,13 @@ baseUrl：http://localhost:3000/api
 
 \- POST  */package* 通过jszip打包生成zip
 
-\- POST  */newpackage* 通过compressing打包生成zip/tar/tgz，暂不支持gzip
+\- POST  */newpackage* 通过compressing打包生成zip/tar/tgz，暂不支持gzip/rar
 
-\- GET  */download* 下载
+\- POST  */decompression* 通过compressing解压zip/tar/tgz，暂不支持gzip/rar
+
+\- GET  */downloadpackage* 下载压缩包
+
+\- GET  */downloaddecompression* 下载解压包
 
 ### 一、上传文件/文件夹的目录✅
 
@@ -78,13 +82,37 @@ output = {
 | filename | string | 是   | 后台生成的目录名称 |
 | type     | string | 是   | 打包的文件后缀     |
 
-### 四、下载✅
+### 四、解压zip/tar/tgz✅
 
-请求地址：**GET** `/api/download`
+请求地址：**POST** `/api/decompression`
 
 #### 参数：
 
-| 参数名   | 类型   | 必填 | 说明                           |
-| -------- | ------ | ---- | ------------------------------ |
-| filename | string | 是   | /api/package接口返回的目录名称 |
+无参数
+
+### 返回结果
+
+| 参数名   | 类型   | 必填 | 说明               |
+| -------- | ------ | ---- | ------------------ |
+| filename | string | 是   | 后台生成的目录名称 |
+
+### 五、下载压缩包✅
+
+请求地址：**GET** `/api/downloadpackage`
+
+#### 参数：
+
+| 参数名   | 类型   | 必填 | 说明                                              |
+| -------- | ------ | ---- | ------------------------------------------------- |
+| filename | string | 是   | /api/package或者/api/newpackage接口返回的目录名称 |
+
+### 六、下载解压包✅
+
+请求地址：**GET** `/api/downloaddecompression`
+
+#### 参数：
+
+| 参数名   | 类型   | 必填 | 说明                                 |
+| -------- | ------ | ---- | ------------------------------------ |
+| filename | string | 是   | /api/decompression接口返回的目录名称 |
 

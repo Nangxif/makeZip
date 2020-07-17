@@ -289,9 +289,56 @@ router.post('/newpackage', function (req, res, next) {
       return res.json(responseData);
     });
 });
-// 下载接口
-router.get('/download', function (req, res, next) {
+
+router.post('/decompression', function (req, res, next) {
+  const fileType = {
+    tar: 'tar',
+    // gzip: 'gz',
+    tgz: 'tgz',
+    zip: 'zip'
+  };
+  const type = req.files[0].originalname.slice(-3);
+  if (!Object.values(fileType).find(i => i == type)) {
+    responseData.ok = false;
+    responseData.result = {
+      msg: '上传压缩包格式错误'
+    };
+    return res.json(responseData);
+  }
+  const timestamp = new Date().getTime();
+  const target = path.join(
+    __dirname,
+    `../public/decompression/download${timestamp}`
+  );
+  fs.mkdirSync(target);
+  compressing[type]
+    .uncompress(
+      path.join(__dirname, '../', req.files[0].path.replace(/\\\\/g, '/')),
+      path.join(target)
+    )
+    .then(() => {
+      responseData.ok = true;
+      responseData.result = {
+        filename: `download${timestamp}`
+      };
+      return res.json(responseData);
+    })
+    .catch(err => {
+      responseData.ok = false;
+      responseData.result = {
+        msg: err
+      };
+      return res.json(responseData);
+    });
+});
+// 下载压缩包接口
+router.get('/downloadpackage', function (req, res, next) {
   res.download(path.join(__dirname, `../public/zip/${req.query.filename}`));
+  return;
+});
+// 下载解压接口
+router.get('/downloaddecompression', function (req, res, next) {
+  res.download(path.join(__dirname, `../public/decompression/${req.query.filename}`));
   return;
 });
 
