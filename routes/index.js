@@ -89,7 +89,8 @@ router.post('/package', function (req, res, next) {
   // 拿到这个req.cookies.timestamp可以找到相应的文件夹目录格式文件
   const zip = new JSZip();
   // zip创建一个download的文件夹
-  const zipFile = zip.folder('download');
+  const timestamp = new Date().getTime();
+  const zipFile = zip.folder(`download${timestamp}`);
 
   // 拿到目录格式文件并解析
   const catalog = JSON.parse(
@@ -100,6 +101,7 @@ router.post('/package', function (req, res, next) {
       )
     )
   );
+  Reflect.deleteProperty(catalog, 'type');
   // 陆陆续续往download文件夹添加文件
   req.files.forEach(item => {
     const catalogArray = catalog[item.fieldname].split('/');
@@ -138,7 +140,6 @@ router.post('/package', function (req, res, next) {
       }
     })
     .then(function (content) {
-      const timestamp = new Date().getTime();
       fs.writeFile(
         path.join(__dirname, `../public/zip/download${timestamp}.zip`),
         content,
@@ -146,7 +147,8 @@ router.post('/package', function (req, res, next) {
           if (!err) {
             responseData.ok = true;
             responseData.result = {
-              filename: `download${timestamp}.zip`
+              filename: `download${timestamp}`,
+              type: 'zip'
             };
             res.json(responseData);
           } else {
@@ -166,18 +168,10 @@ router.post('/package', function (req, res, next) {
 router.post('/newpackage', function (req, res, next) {
   const fileType = {
     tar: 'tar',
-    gzip: 'gz',
+    // gzip: 'gz',
     tgz: 'tgz',
     zip: 'zip'
   };
-  if (!Object.keys(fileType).find(i => i == req.body.type)) {
-    responseData.ok = false;
-    responseData.result = {
-      msg: '参数type必须为tar/gzip/tgz/zip其中一个'
-    };
-    res.json(responseData);
-    return;
-  }
   // 拿到目录格式文件并解析
   const catalog = JSON.parse(
     fs.readFileSync(
@@ -187,9 +181,21 @@ router.post('/newpackage', function (req, res, next) {
       )
     )
   );
+  const type = catalog.type;
+  Reflect.deleteProperty(catalog, 'type');
+  if (!Object.keys(fileType).find(i => i == type)) {
+    responseData.ok = false;
+    responseData.result = {
+      msg: '参数type必须为tar/gzip/tgz/zip其中一个'
+    };
+    res.json(responseData);
+    return;
+  }
+
+  const timestamp = new Date().getTime();
   const target = path.join(
     __dirname,
-    `../public/copyfolder/download${req.cookies.timestamp}`
+    `../public/copyfolder/download${timestamp}`
   );
   fs.mkdirSync(target);
   req.files.forEach(item => {
@@ -224,29 +230,63 @@ router.post('/newpackage', function (req, res, next) {
   });
 
   // 文件复制完成之后开始打包
-  compressing[req.body.type]
+  // console.log(compressing, compressing[type]);
+  // gzip好像只能打包单个文件
+  // 方式一
+  // const tarStream = new compressing[type].Stream();
+  // tarStream.addEntry(target);
+
+  // tarStream
+  //   .on('error', err => {
+  //     responseData.ok = false;
+  //     responseData.result = {
+  //       msg: err
+  //     };
+  //     res.json(responseData);
+  //     return;
+  //   })
+  //   .pipe(
+  //     fs.createWriteStream(
+  //       `../public/zip/download${req.cookies.timestamp}.${fileType[type]}`
+  //     )
+  //   )
+  //   .on('error', err => {
+  //     responseData.ok = false;
+  //     responseData.result = {
+  //       msg: err
+  //     };
+  //     res.json(responseData);
+  //     return;
+  //   });
+  // responseData.ok = true;
+  // responseData.result = {
+  //   filename: `download${req.cookies.timestamp}.${fileType[type]}`
+  // };
+  // res.json(responseData);
+  // return;
+  // 方式二
+  compressing[type]
     .compressDir(
       target,
       path.join(
         __dirname,
-        `../public/zip/download${req.cookies.timestamp}.${
-          fileType[req.body.type]
-        }`
+        `../public/zip/download${timestamp}.${fileType[type]}`
       )
     )
     .then(() => {
       responseData.ok = true;
       responseData.result = {
-        filename: `download${timestamp}.${fileType[req.body.type]}`
+        filename: `download${timestamp}`,
+        type: fileType[type]
       };
-      res.json(responseData);
+      return res.json(responseData);
     })
     .catch(err => {
       responseData.ok = false;
       responseData.result = {
         msg: err
       };
-      res.json(responseData);
+      return res.json(responseData);
     });
 });
 // 下载接口
