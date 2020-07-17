@@ -1,4 +1,4 @@
-# makeZip
+# package-file-server
 
 ### 接口文档
 
@@ -6,7 +6,9 @@ baseUrl：http://localhost:3000/api
 
 \- POST  */relativePath* 上传文件/文件夹的目录
 
-\- POST  */package* 生成zip
+\- POST  */package* 通过jszip打包生成zip
+
+\- POST  */newpackage* 通过compressing打包生成zip/tar/tgz，暂不支持gzip
 
 \- GET  */download* 下载
 
@@ -32,6 +34,7 @@ baseUrl：http://localhost:3000/api
 // 上传文件/文件夹的目录 - /api/relativePath
 input = {
   {
+    type: 'zip',//tar/tgz,格式必须是这样，否则无法打包
     file0: "src/App.vue"
     file1: "src/main.js"
     file2: "src/assets/logo.png"
@@ -60,7 +63,22 @@ output = {
 | -------- | ------ | ---- | ------------------ |
 | filename | string | 是   | 后台生成的目录名称 |
 
-### 三、下载✅
+### 三、打包生成zip/tar/tgz✅
+
+请求地址：**POST** `/api/newpackage`
+
+#### 参数：
+
+无参数
+
+### 返回结果
+
+| 参数名   | 类型   | 必填 | 说明               |
+| -------- | ------ | ---- | ------------------ |
+| filename | string | 是   | 后台生成的目录名称 |
+|          | string | 是   | 打包的文件后缀     |
+
+### 四、下载✅
 
 请求地址：**GET** `/api/download`
 
